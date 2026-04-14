@@ -22,7 +22,13 @@ const httpServer = http.createServer(app); // ← wrap Express in http server
 // ─── Socket.io setup ─────────────────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const allowed = ['http://localhost:3000', process.env.CLIENT_URL].filter(Boolean);
+      if (allowed.includes(origin)) return cb(null, true);
+      if (/^https:\/\/tablemint[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   },
 });
@@ -33,12 +39,27 @@ require('./src/socket/socket')(io);
 
 // ─── Express middleware (unchanged from your original) ────────────────────────
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+
+// ─── CORS ────────────────────────────────────────────────────────────────────
+// Vercel generates a new preview URL for every deploy (e.g. tablemint-xxxx.vercel.app)
+// so hardcoding a single origin breaks after every push. We allow:
+//   1. No-origin requests (curl, server-to-server, mobile)
+//   2. localhost for dev
+//   3. Whatever is in CLIENT_URL (your stable production domain)
+//   4. Any *.vercel.app preview URL that starts with "tablemint"
+const corsOptions = {
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    const allowed = ['http://localhost:3000', process.env.CLIENT_URL].filter(Boolean);
+    if (allowed.includes(origin)) return cb(null, true);
+    if (/^https:\/\/tablemint[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+};
+app.use(cors(corsOptions));
 
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
