@@ -29,11 +29,20 @@ export default function OwnerRegisterPage() {
     setError('');
 
     if (password !== confirm) { setError('Passwords do not match.'); return; }
-    if (password.length < 6)  { setError('Password must be at least 6 characters.'); return; }
+    // Must match backend: 8+ chars, 1 uppercase, 1 lowercase, 1 digit
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
+      setError('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.');
+      return;
+    }
+    const cleanedPhone = phone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (cleanedPhone && !/^\d{10}$/.test(cleanedPhone)) {
+      setError('Phone number must be exactly 10 digits.');
+      return;
+    }
 
     setLoading(true);
     try {
-      const data = await register({ name, email, phone, password, role: 'owner' });
+      const data = await register({ name, email, phone: cleanedPhone, password, role: 'owner' });
       navigate(`/verify-otp?email=${encodeURIComponent(data.email)}`, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
@@ -94,8 +103,8 @@ export default function OwnerRegisterPage() {
             {[
               { label: 'Full Name',        type: 'text',     value: name,     set: setName,     ph: 'Your full name', req: true },
               { label: 'Email',            type: 'email',    value: email,    set: setEmail,    ph: 'you@restaurant.com', req: true },
-              { label: 'Phone (optional)', type: 'tel',      value: phone,    set: setPhone,    ph: '+91 98765 43210', req: false },
-              { label: 'Password',         type: 'password', value: password, set: setPassword, ph: 'Min. 6 characters', req: true },
+              { label: 'Phone (optional)', type: 'tel',      value: phone,    set: setPhone,    ph: '9876543210 (10 digits)', req: false },
+              { label: 'Password',         type: 'password', value: password, set: setPassword, ph: 'Min 8 chars, 1 upper, 1 lower, 1 number', req: true },
               { label: 'Confirm Password', type: 'password', value: confirm,  set: setConfirm,  ph: 'Re-enter password', req: true },
             ].map(({ label, type, value, set, ph, req }) => (
               <div key={label} style={{ marginBottom: 18 }}>
