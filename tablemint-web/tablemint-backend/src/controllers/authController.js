@@ -75,28 +75,24 @@ exports.register = catchAsync(async (req, res, next) => {
   const allowedRoles = ['customer', 'owner'];
   const userRole = allowedRoles.includes(role) ? role : 'customer';
 
-  const otp = generateOTP();
-  const hashedOtp = await bcrypt.hash(otp, 10);
-
   const user = await User.create({
     name,
     email,
     phone,
     password,
     role: userRole,
-    isVerified: false,
-    otp: hashedOtp,
-    otpExpires: new Date(Date.now() + 10 * 60 * 1000),
+    isVerified: true,
+    isActive: true,
   });
 
-  // Send the OTP email
-  const tpl = emailTemplates.otpVerification(user, otp);
-  await sendEmail({ to: user.email, ...tpl });
+  // Auto-login after registration - return JWT directly
+  const token = user.getSignedJwtToken ? user.getSignedJwtToken() : require('jsonwebtoken').sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
   res.status(201).json({
     status: 'success',
-    message: 'Account created! Please check your email for the 6-digit verification code.',
-    data: { email: user.email, role: user.role },
+    message: 'Account created successfully!',
+    token,
+    data: { user: { id: user._id, name: user.name, email: user.email, role: user.role } },
   });
 });
 
