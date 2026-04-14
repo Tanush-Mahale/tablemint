@@ -29,14 +29,21 @@ export default function RegisterPage() {
             setError("Passwords do not match.");
             return;
         }
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
+        // Must match backend rule: 8+ chars, 1 uppercase, 1 lowercase, 1 digit
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
+            setError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.");
+            return;
+        }
+        // Normalize phone: keep only digits, drop +91 country code if present
+        const cleanedPhone = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+        if (cleanedPhone && !/^\d{10}$/.test(cleanedPhone)) {
+            setError("Phone number must be exactly 10 digits.");
             return;
         }
 
         setLoading(true);
         try {
-            const result = await register({ name, email, phone, password, role: "customer" });
+            const result = await register({ name, email, phone: cleanedPhone, password, role: "customer" });
             const otp = result?.otp;
             // Navigate to OTP verify page with email and OTP (if email not configured)
             window.location.href = `/verify-otp?email=${encodeURIComponent(email)}${otp ? '&otp=' + otp : ''}`;
@@ -79,8 +86,8 @@ export default function RegisterPage() {
                         {[
                             { label:"Full Name",        type:"text",     value:name,     set:setName,     placeholder:"John Doe" },
                             { label:"Email",            type:"email",    value:email,    set:setEmail,    placeholder:"you@example.com" },
-                            { label:"Phone (optional)", type:"tel",      value:phone,    set:setPhone,    placeholder:"+91 98765 43210" },
-                            { label:"Password",         type:"password", value:password, set:setPassword, placeholder:"Min. 6 characters" },
+                            { label:"Phone (optional)", type:"tel",      value:phone,    set:setPhone,    placeholder:"9876543210 (10 digits)" },
+                            { label:"Password",         type:"password", value:password, set:setPassword, placeholder:"Min 8 chars, 1 upper, 1 lower, 1 number" },
                             { label:"Confirm Password", type:"password", value:confirm,  set:setConfirm,  placeholder:"Re-enter password" },
                         ].map(({ label, type, value, set, placeholder }) => (
                             <div key={label} style={{ marginBottom:16 }}>
