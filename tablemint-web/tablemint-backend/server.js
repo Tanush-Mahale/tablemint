@@ -17,6 +17,9 @@ require('dotenv').config();
 require('./src/models/Interaction');
 
 const app = express();
+// Render (and most PaaS) put a proxy in front of Node, so req.ip and
+// X-Forwarded-For need to be trusted for rate-limiting and secure cookies.
+app.set('trust proxy', 1);
 const httpServer = http.createServer(app); // ← wrap Express in http server
 
 // ─── Socket.io setup ─────────────────────────────────────────────────────────
