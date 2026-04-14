@@ -60,13 +60,26 @@ exports.register = catchAsync(async (req, res, next) => {
       existingUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
       await existingUser.save({ validateBeforeSave: false });
 
-      const tpl = emailTemplates.otpVerification(existingUser, otp);
-      await sendEmail({ to: existingUser.email, ...tpl });
+      // Try to send — if SMTP is down, fall back to returning the OTP inline
+      // so the user can still verify without email.
+      let emailSent = false;
+      try {
+        const tpl = emailTemplates.otpVerification(existingUser, otp);
+        await sendEmail({ to: existingUser.email, ...tpl });
+        emailSent = true;
+      } catch (e) {
+        console.error('Email send failed (resend):', e.message);
+      }
 
       return res.status(200).json({
         status: 'success',
-        message: 'A new verification code has been sent to your email.',
-        data: { email: existingUser.email },
+        message: emailSent
+          ? 'A new verification code has been sent to your email.'
+          : 'Email service unavailable — use the OTP below to verify.',
+        data: {
+          email: existingUser.email,
+          ...(emailSent ? {} : { otp }),
+        },
       });
     }
   }
@@ -127,13 +140,24 @@ exports.sendOTP = catchAsync(async (req, res, next) => {
   user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
-  const tpl = emailTemplates.otpVerification(user, otp);
-  await sendEmail({ to: user.email, ...tpl });
+  let emailSent = false;
+  try {
+    const tpl = emailTemplates.otpVerification(user, otp);
+    await sendEmail({ to: user.email, ...tpl });
+    emailSent = true;
+  } catch (e) {
+    console.error('Email send failed (sendOTP):', e.message);
+  }
 
   res.status(200).json({
     status: 'success',
-    message: 'A new verification code has been sent to your email.',
-    data: { email: user.email },
+    message: emailSent
+      ? 'A new verification code has been sent to your email.'
+      : 'Email service unavailable — use the OTP below to verify.',
+    data: {
+      email: user.email,
+      ...(emailSent ? {} : { otp }),
+    },
   });
 });
 
