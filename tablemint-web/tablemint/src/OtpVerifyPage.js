@@ -21,6 +21,7 @@ export default function OtpVerifyPage() {
   const { verifyOtp, resendOtp } = useAuth();
 
   const email = searchParams.get('email') || '';
+  const otpFromUrl = searchParams.get('otp') || null; // shown when email isn't configured
 
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
@@ -191,6 +192,17 @@ export default function OtpVerifyPage() {
           {/* Heading */}
           <div style={{ fontSize: 48, marginBottom: 16, textAlign: 'center' }}>📬</div>
           <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: C.dark, marginBottom: 8, textAlign: 'center' }}>
+            {otpFromUrl && (
+              <div style={{ background:'#FBF0E0', border:'2px solid #D4883A', borderRadius:12,
+                padding:'14px 20px', marginBottom:20, textAlign:'center' }}>
+                <p style={{ fontSize:12, fontWeight:700, color:'#D4883A', marginBottom:6, textTransform:'uppercase', letterSpacing:0.5 }}>
+                  ⚠️ Email not configured — use this OTP:
+                </p>
+                <p style={{ fontFamily:'monospace', fontSize:32, fontWeight:700, color:'#2C2416', letterSpacing:8 }}>
+                  {otpFromUrl}
+                </p>
+              </div>
+            )}
             Check your email
           </h1>
           <p style={{ color: C.muted, fontSize: 14, marginBottom: 6, textAlign: 'center', lineHeight: 1.6 }}>
