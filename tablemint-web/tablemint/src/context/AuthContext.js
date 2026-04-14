@@ -11,6 +11,9 @@ export const useAuth = () => {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 axios.defaults.baseURL = API_URL;
+// Safety net: never let a hung backend freeze the UI. 30s is long enough for
+// cold-start wake-ups on free-tier hosting but short enough to surface errors.
+axios.defaults.timeout = 30000;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
