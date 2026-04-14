@@ -9,6 +9,13 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Fail fast instead of hanging for minutes if SMTP is unreachable /
+    // misconfigured (common on PaaS free tiers that block outbound SMTP).
+    // Without these, a dead SMTP host blocks the /register response and the
+    // frontend button appears frozen.
+    connectionTimeout: 8000, // 8s to establish TCP connection
+    greetingTimeout:   8000, // 8s to receive SMTP greeting
+    socketTimeout:     10000, // 10s of inactivity
   });
 };
 
