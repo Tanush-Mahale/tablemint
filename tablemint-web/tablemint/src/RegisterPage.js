@@ -37,9 +37,14 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             const result = await register({ name, email, phone, password, role: "customer" });
-            // If OTP returned in response (email not configured), show it on verify page
             const otp = result?.otp;
-            navigate(`/verify-otp?email=${encodeURIComponent(email)}${otp ? "&otp=" + otp : ""}`, { replace: true });
+            if (otp) {
+                // Email not configured — show OTP on verify page
+                navigate(`/verify-otp?email=${encodeURIComponent(email)}&otp=${otp}`, { replace: true });
+            } else {
+                // Email sent — go to verify page normally
+                navigate(`/verify-otp?email=${encodeURIComponent(email)}`, { replace: true });
+            }
         } catch (err) {
             setError(err.response?.data?.message || "Registration failed. Please try again.");
         } finally {
