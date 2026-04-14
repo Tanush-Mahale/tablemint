@@ -75,24 +75,40 @@ exports.register = catchAsync(async (req, res, next) => {
   const allowedRoles = ['customer', 'owner'];
   const userRole = allowedRoles.includes(role) ? role : 'customer';
 
+  const otp = generateOTP();
+  const hashedOtp = await bcrypt.hash(otp, 10);
+
   const user = await User.create({
     name,
     email,
     phone,
     password,
     role: userRole,
-    isVerified: true,
-    isActive: true,
+    isVerified: false,
+    otp: hashedOtp,
+    otpExpires: new Date(Date.now() + 10 * 60 * 1000),
   });
 
-  // Auto-login after registration - return JWT directly
-  const token = user.getSignedJwtToken ? user.getSignedJwtToken() : require('jsonwebtoken').sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+  // Try to send OTP email — if it fails, return OTP in response
+  let emailSent = false;
+  try {
+    const tpl = emailTemplates.otpVerification(user, otp);
+    await sendEmail({ to: user.email, ...tpl });
+    emailSent = true;
+  } catch (e) {
+    console.error('Email send failed:', e.message);
+  }
 
   res.status(201).json({
     status: 'success',
-    message: 'Account created successfully!',
-    token,
-    data: { user: { id: user._id, name: user.name, email: user.email, role: user.role } },
+    message: emailSent
+      ? 'Account created! Please check your email for the 6-digit verification code.'
+      : 'Account created! Email service unavailable — use the OTP below to verify.',
+    data: {
+      email: user.email,
+      role: user.role,
+      ...(emailSent ? {} : { otp }),
+    },
   });
 });
 
